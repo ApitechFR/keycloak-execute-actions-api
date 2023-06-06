@@ -17,15 +17,24 @@ import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.resource.RealmResourceProvider;
 import org.keycloak.services.resources.Cors;
+import org.keycloak.authentication.actiontoken.execactions.ExecuteActionsActionToken;
+import org.keycloak.common.util.Time;
+
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.OPTIONS;
 import javax.ws.rs.POST;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriBuilder;
+import javax.ws.rs.core.UriInfo;
 
 import static java.util.Optional.ofNullable;
+
+import java.util.ArrayList;
+import java.util.List;
 import static javax.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON_TYPE;
@@ -70,21 +79,54 @@ public class ConfigurableTokenResourceProvider implements RealmResourceProvider 
                 .build();
     }
 
+    public static UriBuilder actionTokenProcessor(UriInfo uriInfo) {
+        UriBuilder baseUriBuilder = uriInfo.getBaseUriBuilder();
+        return baseUriBuilder;
+    }
+
     @POST
     @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON)
-    public Response createToken(TokenConfiguration tokenConfiguration) {
-        HttpRequest request = session.getContext().getHttpRequest();
+    public Response createToken(@QueryParam("clientId") String clientId, @QueryParam("userId") String userId) {
         try {
-            AccessToken accessToken = validateTokenAndUpdateSession(request);
-            UserSessionModel userSession = this.findSession();
-            AccessTokenResponse response = this.createAccessToken(userSession, accessToken, tokenConfiguration);
-            return this.buildCorsResponse(request, response);
-        } catch (ConfigurableTokenException e) {
+
+            // get realm, clientId and lifespan
+            RealmModel realm = session.getContext().getRealm();
+            Integer lifespan = realm.getActionTokenGeneratedByAdminLifespan();
+            int expiration = Time.currentTime() + lifespan;
+            ClientModel client = realm.getClientByClientId(clientId);
+
+            // get user by email
+            // UserModel userByEmail = this.session.users().getUserByEmail(realm,"mo.elmobarik@gmail.com");
+            UserModel user = this.session.users().getUserById(realm, userId);
+
+            // create the list of actions
+            List<String> actions = new ArrayList<>();
+            actions.add("UPDATE_PASSWORD");
+
+            // generate token
+            ExecuteActionsActionToken token = new ExecuteActionsActionToken(user.getId(), user.getEmail(), expiration, actions, null, client.getClientId());
+            // get builder
+            UriBuilder builder = actionTokenProcessor(session.getContext().getUri());
+            builder.path("/realms/" + realm.getName() + "/login-actions/action-token");
+            builder.queryParam("key", token.serialize(session, realm, session.getContext().getUri()));
+
+            // get the link
+            String link = builder.build(realm.getName()).toString();
+            System.out.println("Link: " + link);
+
+            return Response.ok(link).build();
+            
+
+            // UserSessionModel userSession = this.findSession();
+            // AccessTokenResponse response = this.createAccessToken(userSession, accessToken, tokenConfiguration);
+            // return this.buildCorsResponse(request, response);
+        } catch (Error e) {
             LOG.error("An error occurred when fetching an access token", e);
             ErrorRepresentation error = new ErrorRepresentation();
             error.setErrorMessage(e.getMessage());
-            return this.buildCorsResponse(request, Response.status(BAD_REQUEST).entity(error).type(MediaType.APPLICATION_JSON));
+            return Response.status(BAD_REQUEST).entity(error).type(MediaType.APPLICATION_JSON).build();
+            // return this.buildCorsResponse(request, Response.status(BAD_REQUEST).entity(error).type(MediaType.APPLICATION_JSON));
         }
     }
 
@@ -151,6 +193,7 @@ public class ConfigurableTokenResourceProvider implements RealmResourceProvider 
         }
 
         UserModel user = authenticated.getUser();
+        
         if (user == null || !user.isEnabled()) {
             LOG.warn("Keycloak-ConfigurableToken: user does not exist or is not enabled");
             throw new ConfigurableTokenException("invalid_user");
