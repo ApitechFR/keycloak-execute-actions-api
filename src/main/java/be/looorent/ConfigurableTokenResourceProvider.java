@@ -51,7 +51,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
  */
 public class ConfigurableTokenResourceProvider implements RealmResourceProvider {
 
-    static final String ID = "getResetPasswordLink";
+    static final String ID = "execute-actions";
     private static final Logger LOG = Logger.getLogger(ConfigurableTokenResourceProvider.class);
 
     private final KeycloakSession session;
