@@ -10,6 +10,7 @@ import org.keycloak.common.util.Time;
 
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
@@ -51,15 +52,16 @@ public class ConfigurableTokenResourceProvider implements RealmResourceProvider 
         return baseUriBuilder;
     }
 
-    @POST
-    @Consumes(APPLICATION_JSON)
+    @GET
+    // @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON)
-    public Response getResetPasswordLink(@QueryParam("userId") String userId, @QueryParam("realm") String realmName, @QueryParam("clientId") String clientId, @QueryParam("redirectUri") String redirectUri) {
+    public Response getResetPasswordLink(@QueryParam("userId") String userId, @QueryParam("realm") String realmName, @QueryParam("clientId") String clientId, @QueryParam("redirectUri") String redirectUri, @QueryParam("actions") List<String> actions, @QueryParam("lifespan") Integer lifespan) {
         try {
             // get realm, client, lifespan
             RealmModel realm = session.realms().getRealmByName(realmName);
-            // RealmModel realm = session.getContext().getRealm();
-            Integer lifespan = realm.getActionTokenGeneratedByAdminLifespan();
+            if(lifespan == null) {
+                lifespan = realm.getActionTokenGeneratedByAdminLifespan();
+            }
             int expiration = Time.currentTime() + lifespan;
             System.out.println(expiration);
             ClientModel client = realm.getClientByClientId(clientId);
@@ -97,8 +99,8 @@ public class ConfigurableTokenResourceProvider implements RealmResourceProvider 
             }
 
             // create the list of actions
-            List<String> actions = new ArrayList<>();
-            actions.add("UPDATE_PASSWORD");
+            // List<String> actions = new ArrayList<>();
+            // actions.add("UPDATE_PASSWORD");
 
             // generate token
             ExecuteActionsActionToken token = new ExecuteActionsActionToken(user.getId(), user.getEmail(), expiration, actions, null, client.getClientId());
