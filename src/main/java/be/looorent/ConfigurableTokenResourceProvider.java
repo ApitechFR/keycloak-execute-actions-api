@@ -9,9 +9,9 @@ import org.keycloak.authentication.actiontoken.execactions.ExecuteActionsActionT
 import org.keycloak.common.util.Time;
 
 
-import javax.ws.rs.Consumes;
+// import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
-import javax.ws.rs.POST;
+// import javax.ws.rs.POST;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
@@ -20,7 +20,7 @@ import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
 
-import java.util.ArrayList;
+// import java.util.ArrayList;
 import java.util.List;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -55,10 +55,11 @@ public class ConfigurableTokenResourceProvider implements RealmResourceProvider 
     @GET
     // @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON)
-    public Response getResetPasswordLink(@QueryParam("userId") String userId, @QueryParam("realm") String realmName, @QueryParam("clientId") String clientId, @QueryParam("redirectUri") String redirectUri, @QueryParam("actions") List<String> actions, @QueryParam("lifespan") Integer lifespan) {
+    public Response getResetPasswordLink(@QueryParam("userId") String userId, @QueryParam("clientId") String clientId, @QueryParam("redirectUri") String redirectUri, @QueryParam("actions") List<String> actions, @QueryParam("lifespan") Integer lifespan) {
         try {
+
             // get realm, client, lifespan
-            RealmModel realm = session.realms().getRealmByName(realmName);
+            RealmModel realm = session.getContext().getRealm();
             if(lifespan == null) {
                 lifespan = realm.getActionTokenGeneratedByAdminLifespan();
             }
