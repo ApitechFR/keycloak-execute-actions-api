@@ -53,11 +53,16 @@ public class ConfigurableTokenResourceProvider implements RealmResourceProvider 
     }
 
     @GET
-    // @Consumes(APPLICATION_JSON)
+    @Consumes(APPLICATION_JSON)
     @Produces(APPLICATION_JSON)
-    public Response getResetPasswordLink(@QueryParam("userId") String userId, @QueryParam("clientId") String clientId, @QueryParam("redirectUri") String redirectUri, @QueryParam("actions") List<String> actions, @QueryParam("lifespan") Integer lifespan) {
+    public Response getResetPasswordLink(// Parameters needed by this provider implementation
+                                         @QueryParam("userId") String userId,
+                                         // Parameters from Keycloak original method 'executeActionsEmail'
+                                         @QueryParam("redirectUri") String redirectUri,
+                                         @QueryParam("clientId") String clientId,
+                                         @QueryParam("lifespan") Integer lifespan,
+                                         List<String> actions) {
         try {
-
             // get realm, client, lifespan
             RealmModel realm = session.getContext().getRealm();
             if(lifespan == null) {
@@ -99,12 +104,9 @@ public class ConfigurableTokenResourceProvider implements RealmResourceProvider 
                 }
             }
 
-            // create the list of actions
-            // List<String> actions = new ArrayList<>();
-            // actions.add("UPDATE_PASSWORD");
-
             // generate token
-            ExecuteActionsActionToken token = new ExecuteActionsActionToken(user.getId(), user.getEmail(), expiration, actions, null, client.getClientId());
+            ExecuteActionsActionToken token = new ExecuteActionsActionToken(user.getId(), user.getEmail(), expiration, actions, redirectUri, client.getClientId());
+
             // get builder
             UriBuilder builder = actionTokenProcessor(session.getContext().getUri());
             builder.path("/realms/" + realm.getName() + "/login-actions/action-token");
